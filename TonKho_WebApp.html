@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📦 Phân Tích Tồn Kho NVKD</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:14px;color:#2c3e50;background:#f0f2f5}
+.header{background:#1B3A5C;color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:16px;font-weight:600}
+.header span{font-size:11px;opacity:.7}
+.container{max-width:1300px;margin:0 auto;padding:16px}
+.tabs{display:flex;border-bottom:2px solid #dee2e6;margin-bottom:20px;background:#fff;border-radius:10px 10px 0 0;overflow:hidden}
+.tab{padding:12px 20px;cursor:pointer;font-size:13px;color:#6c757d;border:none;border-bottom:3px solid transparent;background:none;margin-bottom:-2px;font-weight:500}
+.tab:hover{color:#1B3A5C;background:#f8f9fa}
+.tab.active{color:#1B3A5C;border-bottom-color:#1B3A5C;font-weight:700}
+.panel{display:none}.panel.active{display:block}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-left:4px solid #dee2e6}
+.kpi.red{border-left-color:#c0392b}.kpi.orange{border-left-color:#e67e22}.kpi.green{border-left-color:#27ae60}.kpi.blue{border-left-color:#2E86AB}
+.kpi-label{font-size:11px;color:#6c757d;margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px}
+.kpi-val{font-size:24px;font-weight:700}
+.kpi.red .kpi-val{color:#c0392b}.kpi.orange .kpi-val{color:#e67e22}.kpi.green .kpi-val{color:#27ae60}.kpi.blue .kpi-val{color:#2E86AB}
+.tbl-wrap{overflow-x:auto;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.tbl-inner{max-height:420px;overflow-y:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;background:#fff}
+.tbl th{background:#1B3A5C;color:#fff;padding:10px 12px;text-align:left;font-weight:500;font-size:11px;position:sticky;top:0;z-index:1;white-space:nowrap}
+.tbl th.s:hover{background:#2c5282;cursor:pointer}
+.tbl td{padding:8px 12px;border-bottom:1px solid #f0f0f0}
+.tbl tr:hover td{background:#f8f9fa}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.b-red{background:#fdecea;color:#c0392b}.b-orange{background:#fef3e2;color:#e67e22}
+.b-yellow{background:#fffde7;color:#f39c12}.b-green{background:#eafaf1;color:#27ae60}
+.btn{padding:9px 18px;border:1px solid #dee2e6;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-weight:500;transition:.2s}
+.btn:hover{background:#f8f9fa}
+.btn-primary{background:#1B3A5C;color:#fff;border-color:#1B3A5C}.btn-primary:hover{background:#2c5282}
+.btn-green{background:#27ae60;color:#fff;border-color:#27ae60}.btn-green:hover{background:#219a52}
+.btn-red{background:#c0392b;color:#fff;border-color:#c0392b}
+textarea{width:100%;height:210px;font-size:12px;font-family:'Courier New',monospace;border:1px solid #dee2e6;border-radius:8px;padding:12px;background:#fff;resize:vertical;line-height:1.5}
+textarea:focus{outline:none;border-color:#1B3A5C;box-shadow:0 0 0 3px rgba(27,58,92,.1)}
+select,input[type=text]{padding:8px 12px;border:1px solid #dee2e6;border-radius:8px;background:#fff;font-size:13px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.note{font-size:12px;color:#6c757d;line-height:1.7}
+.progress-bar{height:8px;background:#e9ecef;border-radius:4px;overflow:hidden;flex:1}
+.progress-fill{height:100%;border-radius:4px}
+.chart-card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px}
+.chart-title{font-size:11px;font-weight:700;color:#6c757d;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.empty{text-align:center;padding:48px;color:#adb5bd;font-size:14px}
+.msg{font-size:13px;padding:10px 14px;border-radius:8px;margin-top:10px;display:none}
+.msg.ok{background:#eafaf1;color:#27ae60;border:1px solid #a9dfbf;display:block}
+.msg.err{background:#fdecea;color:#c0392b;border:1px solid #f5b7b1;display:block}
+.hint{background:#EBF5FB;border:1px solid #AED6F1;border-radius:8px;padding:14px;margin-bottom:14px;font-size:12px;color:#1B3A5C;line-height:1.8}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag{background:#fff;border:1px solid #AED6F1;color:#1B3A5C;padding:3px 10px;border-radius:20px;font-size:11px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px;font-size:12px;color:#6c757d}
+.ldot{width:12px;height:12px;border-radius:3px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="header">
+  <div><h1>📦 Phân Tích Tồn Kho NVKD</h1><span>Copy từ Excel → Paste → Phân tích tự động</span></div>
+  <span id="hdr-ct" style="font-size:12px;background:rgba(255,255,255,.15);padding:4px 12px;border-radius:20px"></span>
+</div>
+<div class="container">
+<div class="tabs">
+  <button class="tab active" onclick="sw('input')">📥 Nhập dữ liệu</button>
+  <button class="tab" onclick="sw('ov')">📊 Tổng quan</button>
+  <button class="tab" onclick="sw('dt')">🔍 Chi tiết</button>
+  <button class="tab" onclick="sw('al')">⚠️ Cảnh báo</button>
+  <button class="tab" onclick="sw('nv')">👤 Theo NVKD</button>
+</div>
+
+<div id="tab-input" class="panel active">
+  <div class="hint">
+    📋 <b>Cách copy từ file Excel của bạn:</b><br>
+    1. Mở file Excel → Click ô <b>Mã hàng</b> (cột A, dòng header) → <b>Ctrl+Shift+End</b> → <b>Ctrl+C</b><br>
+    2. Dán vào ô bên dưới → Bấm <b>▶ Xử lý dữ liệu</b><br>
+    ✅ App tự nhận cột và <b>tự bỏ qua dòng nhóm</b> (dòng "Mã hàng: ..." in đậm)
+    <div class="tags">
+      <span class="tag">Mã hàng</span><span class="tag">Mã ngăn</span><span class="tag">Mặt hàng</span>
+      <span class="tag">ĐVT</span><span class="tag">Số lô</span><span class="tag">Ngày sản xuất</span>
+      <span class="tag">Tồn kho</span><span class="tag">NVKD</span><span class="tag">Số ngày tồn kho</span>
+      <span class="tag">Số khối tồn kho</span><span class="tag">Ngày nhập gần nhất</span><span class="tag">Ngày xuất gần nhất</span>
+    </div>
+  </div>
+  <textarea id="box" placeholder="Dán dữ liệu Excel vào đây (Ctrl+V)..."></textarea>
+  <div class="row" style="margin-top:12px">
+    <button class="btn btn-primary" onclick="run()">▶ Xử lý dữ liệu</button>
+    <button class="btn btn-green" onclick="demo()">📋 Dữ liệu mẫu</button>
+    <button class="btn btn-red" onclick="reset()">🗑 Xóa</button>
+  </div>
+  <div id="msg" class="msg"></div>
+</div>
+
+<div id="tab-ov" class="panel">
+  <div class="kpi-grid">
+    <div class="kpi blue"><div class="kpi-label">Tổng SKU</div><div class="kpi-val" id="k0">—</div></div>
+    <div class="kpi blue"><div class="kpi-label">Tổng tồn kho</div><div class="kpi-val" id="k1">—</div></div>
+    <div class="kpi blue"><div class="kpi-label">Tổng m³</div><div class="kpi-val" id="k2">—</div></div>
+    <div class="kpi red"><div class="kpi-label">SKU &gt;365 ngày</div><div class="kpi-val" id="k3">—</div></div>
+    <div class="kpi orange"><div class="kpi-label">SKU &gt;180 ngày</div><div class="kpi-val" id="k4">—</div></div>
+    <div class="kpi green"><div class="kpi-label">SKU ≤90 ngày</div><div class="kpi-val" id="k5">—</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="chart-card">
+      <div class="chart-title">Phân bố xếp loại</div>
+      <div id="lgd" class="legend"></div>
+      <div style="height:200px"><canvas id="cPie"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Phân bố số ngày tồn</div>
+      <div style="height:240px"><canvas id="cBar"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-dt" class="panel">
+  <div class="row">
+    <input type="text" id="sq" placeholder="🔍 Tìm mã hàng, tên hàng..." style="flex:1;min-width:200px" oninput="rDt()">
+    <select id="fl" onchange="rDt()">
+      <option value="">Tất cả xếp loại</option>
+      <option value="365">🔴 Rất lâu &gt;365 ngày</option>
+      <option value="180">🟠 Lâu 181-365 ngày</option>
+      <option value="90">🟡 TB 91-180 ngày</option>
+      <option value="0">🟢 Tốt ≤90 ngày</option>
+    </select>
+    <select id="fn" onchange="rDt()"><option value="">Tất cả NVKD</option></select>
+  </div>
+  <div class="tbl-wrap"><div class="tbl-inner"><table class="tbl">
+    <thead><tr>
+      <th class="s" onclick="sb('ma')">Mã hàng ↕</th>
+      <th>Mã ngăn</th><th>Mặt hàng</th><th>ĐVT</th><th>Số lô</th><th>Ngày SX</th>
+      <th class="s" onclick="sb('nv')">NVKD ↕</th>
+      <th class="s" onclick="sb('ton')" style="text-align:right">Tồn kho ↕</th>
+      <th class="s" onclick="sb('ng')" style="text-align:right">Ngày tồn ↕</th>
+      <th style="text-align:right">m³</th>
+      <th>Ngày nhập</th><th>Ngày xuất</th><th>Xếp loại</th>
+    </tr></thead>
+    <tbody id="bDt"><tr><td colspan="13" class="empty">⬆ Nhập dữ liệu để bắt đầu</td></tr></tbody>
+  </table></div></div>
+  <div id="cDt" class="note" style="margin-top:8px"></div>
+</div>
+
+<div id="tab-al" class="panel">
+  <div class="row">
+    <select id="an" onchange="rAl()">
+      <option value="90">Tất cả &gt;90 ngày</option>
+      <option value="180">&gt;180 ngày</option>
+      <option value="365">&gt;365 ngày</option>
+    </select>
+    <select id="av" onchange="rAl()"><option value="">Tất cả NVKD</option></select>
+    <input type="text" id="aq" placeholder="🔍 Tìm..." style="flex:1" oninput="rAl()">
+  </div>
+  <div class="tbl-wrap"><div class="tbl-inner"><table class="tbl">
+    <thead><tr>
+      <th>#</th><th>NVKD</th><th>Mã hàng</th><th>Mã ngăn</th><th>Mặt hàng</th>
+      <th style="text-align:right">Tồn kho</th><th style="text-align:right">Ngày tồn</th>
+      <th style="text-align:right">m³</th><th>Ngày nhập</th><th>Ngày xuất</th><th>Xếp loại</th>
+    </tr></thead>
+    <tbody id="bAl"><tr><td colspan="11" class="empty">Chưa có dữ liệu</td></tr></tbody>
+  </table></div></div>
+  <div id="cAl" class="note" style="margin-top:8px"></div>
+</div>
+
+<div id="tab-nv" class="panel">
+  <div class="chart-card">
+    <div class="chart-title">Tổng tồn kho theo NVKD</div>
+    <div style="height:260px"><canvas id="cNv"></canvas></div>
+  </div>
+  <div class="tbl-wrap"><div class="tbl-inner"><table class="tbl">
+    <thead><tr>
+      <th>NVKD</th><th style="text-align:right">SKU</th>
+      <th style="text-align:right">Tổng tồn</th><th style="text-align:right">Tổng m³</th>
+      <th style="text-align:right">SKU &gt;365d 🔴</th>
+      <th style="text-align:right">SKU &gt;180d 🟠</th>
+      <th style="text-align:right">SKU &gt;90d 🟡</th>
+      <th>% Rủi ro</th>
+    </tr></thead>
+    <tbody id="bNv"><tr><td colspan="8" class="empty">Chưa có dữ liệu</td></tr></tbody>
+  </table></div></div>
+</div>
+</div>
+
+<script>
+let D=[],sk='ng',sd=-1,CH={};
+
+const DEMO=`Mã hàng\tMã ngăn\tMặt hàng\tĐVT\tSố lô\tNgày sản xuất\tTồn kho\tNVKD\tSố ngày tồn kho\tSố khối tồn kho\tNgày nhập gần nhất\tNgày xuất gần nhất
+\t\tMã hàng: Bộ bình chai vàng in con Voi 350ml-52mm_MS.Hiền (KH)\t\t\t\t42.00\t\t514\t0.03\t\t
+B070963251Z1\t\tBộ bình chai vàng in con Voi 350ml-52mm_MS.Hiền (KH)\tCái\tWO2412-0065\t07/12/24\t42.00\tHIENLTT\t514\t0.03\t30/12/24\t30/12/24
+\t\tMã hàng: Bộ bình nâu in con Hươu 350ml-52mm_Ms.Hiền (KH)\t\t\t\t42.00\t\t514\t0.03\t\t
+B070964151Z1\t\tBộ bình nâu in con Hươu 350ml\tCái\tWO2412-0066\t07/12/24\t42.00\tHIENLTT\t514\t0.03\t30/12/24\t30/12/24
+AAS0000001Z1\tGY\tBỘ HỘP GIẤY TRONG -760G\tBộ\tWO2507-0297\t28/07/25\t445.00\tTHUYTP\t281\t1.38\t30/10/25\t30/10/25
+\t\tMã hàng: Bộ nắp nhấn phun màu bạc và seal cổ 20/31.7mm_Ms.Thương\t\t\t\t65194.00\t\t981\t2.09\t\t
+B01860000AX1B1\t20N7P\tBộ nắp nhấn phun màu bạc và seal cổ 20/31.7mm_Ms.Thương\tCái\tWO2505-0166\t02/06/25\t688.00\tTHUYTP\t337\t0.02\t31/12/25\t06/01/26
+B01860000AX1B1\t20N7P\tBộ nắp nhấn phun màu bạc và seal cổ 20/31.7mm_Ms.Thương\tCái\tWO2512-0195\t19/12/25\t24499.00\tTHUYTP\t137\t0.78\t22/04/26\t11/03/26
+B01860000AX1B1\t20N7P\tBộ nắp nhấn phun màu bạc và seal cổ 20/31.7mm_Ms.Thương\tCái\tWO2412-0012\t14/12/24\t40007.00\tTHUYTP\t507\t1.28\t11/02/26\t08/02/26
+B01840000AX1B1\t20N8P\tBộ nắp nhấn phun màu bạc và seal cổ 20/37mm\tCái\tWO2602-0151\t02/02/26\t21222.00\tPAVICO\t92\t1.00\t16/04/26\t24/04/26
+B019900001A1\t24N6\tBộ nắp nhấn trong 47mm cho cổ 24mm\tCái\tWO2505-0098\t27/05/25\t3597.00\tHANHNTM1\t343\t0.45\t27/11/25\t04/12/25
+B07204850Z11A1\t\tCa múc nước vàng gold - in DO NOT (PVC)\tCái\tWO2402-0041\t07/02/24\t32.00\tHANHNTM1\t818\t0.08\t09/08/24\t11/02/25`;
+
+const f=n=>Math.round(n).toLocaleString('vi-VN');
+const ff=n=>parseFloat(n).toFixed(3);
+function cl(d){
+  if(d>365)return{l:'Rất lâu (>1 năm)',c:'b-red',col:'#c0392b'};
+  if(d>180)return{l:'Lâu (6-12 tháng)',c:'b-orange',col:'#e67e22'};
+  if(d>90)return{l:'TB (3-6 tháng)',c:'b-yellow',col:'#f39c12'};
+  return{l:'Tốt (<3 tháng)',c:'b-green',col:'#27ae60'};
+}
+
+function parse(raw){
+  const lines=raw.trim().split('\n').filter(l=>l.trim());
+  if(lines.length<2)return null;
+  const hdrs=lines[0].split('\t').map(h=>h.trim().toLowerCase());
+  const m={};
+  hdrs.forEach((h,i)=>{
+    if(/^mã.?hàng$|^ma hang$/.test(h))m.ma=i;
+    else if(/mã.?ngăn|ma.?ngan/.test(h))m.ngan=i;
+    else if(/mặt.?hàng|tên.?hàng|ten.?hang/.test(h))m.ten=i;
+    else if(/^đvt$|^dvt$|đơn.?vị/.test(h))m.dvt=i;
+    else if(/số.?lô|so.?lo/.test(h))m.lo=i;
+    else if(/ngày.?sản|ngay.?sx/.test(h))m.nsx=i;
+    else if(/tồn.?kho|ton.?kho/.test(h)&&!/ngày|số/.test(h))m.ton=i;
+    else if(/nvkd/.test(h))m.nv=i;
+    else if(/số.?ngày.?tồn|ngày.?tồn/.test(h))m.ng=i;
+    else if(/số.?khối|m³|m3|khoi/.test(h))m.m3=i;
+    else if(/ngày.?nhập|ngay.?nhap/.test(h))m.nhap=i;
+    else if(/ngày.?xuất|ngay.?xuat/.test(h))m.xuat=i;
+  });
+  if(m.ten===undefined||m.ton===undefined)
+    return{err:'Không nhận diện được cột Mặt hàng / Tồn kho. Kiểm tra lại dòng header.'};
+  const rows=[];
+  for(let i=1;i<lines.length;i++){
+    const c=lines[i].split('\t');
+    const ma=(c[m.ma]||'').trim();
+    const ten=(c[m.ten]||'').trim();
+    // Bỏ qua dòng nhóm: cột Mã hàng trống VÀ Mặt hàng bắt đầu bằng "Mã hàng:"
+    if(ma===''&&ten.startsWith('Mã hàng:'))continue;
+    if(!ten)continue;
+    const ton=parseFloat((c[m.ton]||'0').replace(/[,\s]/g,''))||0;
+    rows.push({
+      ma,ngan:(c[m.ngan]||'').trim(),ten,
+      dvt:(c[m.dvt]||'').trim(),lo:(c[m.lo]||'').trim(),
+      nsx:(c[m.nsx]||'').trim(),
+      nv:m.nv!==undefined?(c[m.nv]||'').trim():'',
+      ton,
+      ng:parseFloat((c[m.ng]||'0').replace(/[,\s]/g,''))||0,
+      m3:parseFloat((c[m.m3]||'0').replace(/[,\s]/g,''))||0,
+      nhap:(c[m.nhap]||'').trim(),xuat:(c[m.xuat]||'').trim(),
+    });
+  }
+  return rows;
+}
+
+function msg(t,type){const e=document.getElementById('msg');e.className='msg '+(type||'');e.textContent=t;}
+
+function run(){
+  const raw=document.getElementById('box').value;
+  if(!raw.trim()){msg('Chưa có dữ liệu! Dán dữ liệu Excel vào ô trên.','err');return;}
+  const r=parse(raw);
+  if(!r){msg('Dữ liệu không hợp lệ','err');return;}
+  if(r.err){msg(r.err,'err');return;}
+  if(!r.length){msg('Không có dòng nào (đã bỏ các dòng nhóm)','err');return;}
+  D=r;
+  const bad=D.filter(x=>x.ng>365).length;
+  msg(`✓ Đã xử lý ${D.length} dòng SKU — ${bad} SKU tồn hơn 1 năm`,'ok');
+  document.getElementById('hdr-ct').textContent=D.length+' SKU';
+  fillF();kpi();charts();rDt();rAl();rNv();sw('ov');
+}
+function demo(){document.getElementById('box').value=DEMO;run();}
+function reset(){
+  D=[];document.getElementById('box').value='';
+  document.getElementById('msg').className='msg';
+  document.getElementById('hdr-ct').textContent='';
+  kpi();rDt();rAl();rNv();
+  Object.values(CH).forEach(c=>{try{c.destroy()}catch(e){}});CH={};
+}
+function fillF(){
+  const nvs=[...new Set(D.map(r=>r.nv).filter(Boolean))].sort();
+  ['fn','av'].forEach(id=>{
+    const s=document.getElementById(id);
+    s.innerHTML='<option value="">Tất cả NVKD</option>';
+    nvs.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;s.appendChild(o);});
+  });
+}
+function kpi(){
+  const n=D.length;
+  document.getElementById('k0').textContent=n?f(n):'—';
+  document.getElementById('k1').textContent=n?f(D.reduce((a,r)=>a+r.ton,0)):'—';
+  document.getElementById('k2').textContent=n?ff(D.reduce((a,r)=>a+r.m3,0)):'—';
+  document.getElementById('k3').textContent=n?D.filter(r=>r.ng>365).length:'—';
+  document.getElementById('k4').textContent=n?D.filter(r=>r.ng>180).length:'—';
+  document.getElementById('k5').textContent=n?D.filter(r=>r.ng<=90).length:'—';
+}
+function charts(){
+  if(!D.length)return;
+  const clrs=['#c0392b','#e67e22','#f39c12','#27ae60'];
+  const cts={'>365d':D.filter(r=>r.ng>365).length,'181-365d':D.filter(r=>r.ng>180&&r.ng<=365).length,'91-180d':D.filter(r=>r.ng>90&&r.ng<=180).length,'≤90d':D.filter(r=>r.ng<=90).length};
+  if(CH.pie)CH.pie.destroy();
+  CH.pie=new Chart(document.getElementById('cPie'),{type:'doughnut',data:{labels:Object.keys(cts),datasets:[{data:Object.values(cts),backgroundColor:clrs,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+  const tot=D.length;
+  document.getElementById('lgd').innerHTML=Object.keys(cts).map((k,i)=>`<span style="display:flex;align-items:center;gap:4px"><span class="ldot" style="background:${clrs[i]}"></span>${k}: <b>${Object.values(cts)[i]}</b> (${Math.round(Object.values(cts)[i]/tot*100)}%)</span>`).join('');
+  const bk=[30,60,90,120,180,270,365,500,1000,99999];
+  const bl=['≤30','31-60','61-90','91-120','121-180','181-270','271-365','366-500','501-1000','>1000'];
+  const bc=new Array(10).fill(0);
+  D.forEach(r=>{const i=bk.findIndex(b=>r.ng<=b);bc[i===-1?9:i]++;});
+  if(CH.bar)CH.bar.destroy();
+  CH.bar=new Chart(document.getElementById('cBar'),{type:'bar',data:{labels:bl,datasets:[{data:bc,backgroundColor:bc.map((_,i)=>i>=6?'#c0392b':i>=4?'#e67e22':i>=3?'#f39c12':'#27ae60'),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},autoSkip:false}},y:{ticks:{stepSize:1,precision:0}}}}});
+  const nm={};D.forEach(r=>{const k=r.nv||'(Chưa phân)';if(!nm[k])nm[k]=0;nm[k]+=r.ton;});
+  const ns=Object.entries(nm).sort((a,b)=>b[1]-a[1]);
+  if(CH.nv)CH.nv.destroy();
+  CH.nv=new Chart(document.getElementById('cNv'),{type:'bar',data:{labels:ns.map(([k])=>k),datasets:[{data:ns.map(([,v])=>v),backgroundColor:'#2E86AB',borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>v>=1000?Math.round(v/1000)+'K':v}},y:{ticks:{font:{size:12}}}}}});
+}
+function sb(k){if(sk===k)sd*=-1;else{sk=k;sd=-1;}rDt();}
+function rDt(){
+  const q=(document.getElementById('sq').value||'').toLowerCase();
+  const lo=document.getElementById('fl').value;
+  const nv=document.getElementById('fn').value;
+  let rows=D.filter(r=>{
+    if(q&&!r.ma.toLowerCase().includes(q)&&!r.ten.toLowerCase().includes(q))return false;
+    if(nv&&r.nv!==nv)return false;
+    if(lo){const lv=parseInt(lo);if(lv===365&&r.ng<=365)return false;if(lv===180&&(r.ng<=180||r.ng>365))return false;if(lv===90&&(r.ng<=90||r.ng>180))return false;if(lv===0&&r.ng>90)return false;}
+    return true;
+  });
+  const km={ma:'ma',ton:'ton',ng:'ng',nv:'nv'};
+  if(km[sk])rows.sort((a,b)=>{const av=a[km[sk]],bv=b[km[sk]];return typeof av==='number'?(av-bv)*sd:String(av).localeCompare(String(bv))*sd;});
+  const tb=document.getElementById('bDt');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="13" class="empty">Không có kết quả</td></tr>';document.getElementById('cDt').textContent='';return;}
+  tb.innerHTML=rows.map(r=>{const c=cl(r.ng);return`<tr>
+    <td style="font-family:monospace;font-size:11px;color:#1B3A5C">${r.ma}</td>
+    <td style="text-align:center">${r.ngan}</td>
+    <td style="max-width:260px;white-space:normal;font-size:11px">${r.ten}</td>
+    <td style="text-align:center">${r.dvt}</td>
+    <td style="font-size:10px">${r.lo}</td>
+    <td style="text-align:center;font-size:11px">${r.nsx}</td>
+    <td style="text-align:center;font-weight:700">${r.nv||'—'}</td>
+    <td style="text-align:right;font-weight:700">${f(r.ton)}</td>
+    <td style="text-align:right;color:${c.col};font-weight:700">${f(r.ng)}</td>
+    <td style="text-align:right">${ff(r.m3)}</td>
+    <td style="text-align:center;font-size:11px">${r.nhap}</td>
+    <td style="text-align:center;font-size:11px">${r.xuat}</td>
+    <td><span class="badge ${c.c}">${c.l}</span></td>
+  </tr>`;}).join('');
+  document.getElementById('cDt').textContent=`Hiển thị ${rows.length} / ${D.length} dòng`;
+}
+function rAl(){
+  const md=parseInt(document.getElementById('an').value||'90');
+  const nv=document.getElementById('av').value;
+  const q=(document.getElementById('aq').value||'').toLowerCase();
+  const rows=D.filter(r=>r.ng>=md&&(!nv||r.nv===nv)&&(!q||r.ma.toLowerCase().includes(q)||r.ten.toLowerCase().includes(q))).sort((a,b)=>b.ng-a.ng);
+  const tb=document.getElementById('bAl');
+  if(!rows.length){tb.innerHTML=`<tr><td colspan="11" class="empty">✅ Không có SKU nào tồn quá ${md} ngày</td></tr>`;document.getElementById('cAl').textContent='';return;}
+  tb.innerHTML=rows.map((r,i)=>{const c=cl(r.ng);return`<tr>
+    <td style="text-align:center;color:#adb5bd">${i+1}</td>
+    <td style="text-align:center;font-weight:700">${r.nv||'—'}</td>
+    <td style="font-family:monospace;font-size:11px;color:#1B3A5C">${r.ma}</td>
+    <td style="text-align:center">${r.ngan}</td>
+    <td style="max-width:240px;white-space:normal;font-size:11px">${r.ten}</td>
+    <td style="text-align:right;font-weight:700">${f(r.ton)}</td>
+    <td style="text-align:right;color:${c.col};font-weight:700">${f(r.ng)}</td>
+    <td style="text-align:right">${ff(r.m3)}</td>
+    <td style="text-align:center;font-size:11px">${r.nhap}</td>
+    <td style="text-align:center;font-size:11px">${r.xuat}</td>
+    <td><span class="badge ${c.c}">${c.l}</span></td>
+  </tr>`;}).join('');
+  document.getElementById('cAl').textContent=`⚠️ ${rows.length} SKU tồn trên ${md} ngày`;
+}
+function rNv(){
+  const nm={};
+  D.forEach(r=>{const k=r.nv||'(Chưa phân)';if(!nm[k])nm[k]={sku:0,ton:0,m3:0,d365:0,d180:0,d90:0};nm[k].sku++;nm[k].ton+=r.ton;nm[k].m3+=r.m3;if(r.ng>365)nm[k].d365++;if(r.ng>180)nm[k].d180++;if(r.ng>90)nm[k].d90++;});
+  const sorted=Object.entries(nm).sort((a,b)=>b[1].d365-a[1].d365||b[1].sku-a[1].sku);
+  const tb=document.getElementById('bNv');
+  if(!sorted.length){tb.innerHTML='<tr><td colspan="8" class="empty">Chưa có dữ liệu</td></tr>';return;}
+  tb.innerHTML=sorted.map(([k,v])=>{const pct=v.sku?Math.round(v.d90/v.sku*100):0;const bc=pct>60?'#c0392b':pct>30?'#e67e22':'#27ae60';return`<tr>
+    <td style="font-weight:700">${k}</td>
+    <td style="text-align:right">${v.sku}</td>
+    <td style="text-align:right;font-weight:600">${f(v.ton)}</td>
+    <td style="text-align:right">${ff(v.m3)}</td>
+    <td style="text-align:right;color:#c0392b;font-weight:700">${v.d365}</td>
+    <td style="text-align:right;color:#e67e22">${v.d180}</td>
+    <td style="text-align:right;color:#f39c12">${v.d90}</td>
+    <td style="min-width:110px"><div style="display:flex;align-items:center;gap:8px"><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${bc}"></div></div><span style="font-size:12px;color:${bc};font-weight:700;min-width:32px">${pct}%</span></div></td>
+  </tr>`;}).join('');
+}
+function sw(n){
+  const ns=['input','ov','dt','al','nv'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',ns[i]===n));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+n).classList.add('active');
+}
+</script>
+</body>
+</html>
